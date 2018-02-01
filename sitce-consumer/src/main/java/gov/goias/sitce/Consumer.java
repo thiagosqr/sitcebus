@@ -8,13 +8,13 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Scope;
-import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Created by thiago on 09/01/17.
@@ -25,7 +25,9 @@ public class Consumer implements Runnable {
 
     final KafkaConsumer<String, byte[]> consumer;
 
-    public Consumer(List<String> topics) throws IOException {
+    final AtomicBoolean closed = new AtomicBoolean(false);
+
+    public Consumer(List<String> topics, int bufferSize) throws IOException {
 
         try (InputStream props = Resources.getResource("consumer.properties").openStream()) {
             final Properties properties = new Properties();
@@ -42,8 +44,10 @@ public class Consumer implements Runnable {
 
         LOGGER.info("Starting new consumer Thread: " +Thread.currentThread().getName());
 
-        while (true) {
+        while (!closed.get()) {
+
             ConsumerRecords<String, byte[]> records = consumer.poll(100);
+
             for (ConsumerRecord<String, byte[]> record : records){
 
                 final byte[] value = record.value();
